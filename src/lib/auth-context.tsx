@@ -12,6 +12,7 @@ interface User {
   role: 'AGENT' | 'ADMIN';
   balance: number;
   commissions: number;
+  global_markup: number;
 }
 
 interface AuthContextType {
