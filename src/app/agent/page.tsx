@@ -199,7 +199,7 @@ function AgentPageContent() {
   const handleSaveMarkups = async () => {
     if (!user) return;
     
-    setFetchingData(true);
+    setIsSavingMarkups(true);
     try {
       // 1. Update Global Markup in Profile
       const { error: profileError } = await supabase
@@ -231,7 +231,7 @@ function AgentPageContent() {
       console.error('Error saving markups:', err.message);
       alert('Failed to save markups: ' + err.message);
     } finally {
-      setFetchingData(false);
+      setIsSavingMarkups(false);
     }
   };
 
@@ -532,10 +532,10 @@ function AgentPageContent() {
               <div className="mt-8">
                 <button
                   onClick={handleSaveMarkups}
-                  disabled={fetchingData}
+                  disabled={isSavingMarkups}
                   className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-600/30 hover:bg-blue-700 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {fetchingData ? <Loader2 className="animate-spin" size={20} /> : <ShieldCheck size={20} />}
+                  {isSavingMarkups ? <Loader2 className="animate-spin" size={20} /> : <ShieldCheck size={20} />}
                   Save Store Pricing
                 </button>
               </div>
@@ -762,29 +762,37 @@ function AgentPageContent() {
                   </div>
                 </div>
 
-                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-300 shadow-sm">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Financial Stats</h4>
-                  <div className="space-y-6">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-slate-500 font-bold">Today's Earnings</span>
-                        <span className="text-sm font-black text-green-600">+GH₵ 42.00</span>
+                  <div className="bg-white p-8 rounded-[2.5rem] border border-slate-300 shadow-sm">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Financial Stats</h4>
+                    <div className="space-y-6">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-slate-500 font-bold">Today's Earnings</span>
+                          <span className="text-sm font-black text-green-600">+{((dbTransactions.filter(tx => {
+                            const date = new Date(tx.created_at);
+                            const today = new Date();
+                            return date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear() && tx.status === 'DELIVERED';
+                          }).reduce((acc, tx) => acc + Number(tx.commission_earned || 0), 0))).toLocaleString('en-GH', { style: 'currency', currency: 'GHS' })}</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="w-[10%] h-full bg-green-500 rounded-full" />
+                        </div>
                       </div>
-                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="w-[65%] h-full bg-green-500 rounded-full" />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-slate-500 font-bold">Monthly Sales</span>
-                        <span className="text-sm font-black text-slate-900">GH₵ 8,420.00</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="w-[85%] h-full bg-blue-600 rounded-full" />
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-slate-500 font-bold">Monthly Sales</span>
+                          <span className="text-sm font-black text-slate-900">{(dbTransactions.filter(tx => {
+                            const date = new Date(tx.created_at);
+                            const now = new Date();
+                            return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear() && tx.status === 'DELIVERED';
+                          }).reduce((acc, tx) => acc + Number(tx.amount), 0)).toLocaleString('en-GH', { style: 'currency', currency: 'GHS' })}</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="w-[10%] h-full bg-blue-600 rounded-full" />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
               </div>
             </div>
           </div>
@@ -792,104 +800,32 @@ function AgentPageContent() {
       case 'DEVELOPER':
         return (
           <div className="max-w-screen-xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-              {/* Main Column: API Keys & Webhooks */}
-              <div className="lg:col-span-2 space-y-8">
-                <section className="space-y-4">
-                  <div className="flex items-center gap-2 px-2">
-                    <Code size={18} className="text-blue-600" />
-                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">API Configuration</h3>
-                  </div>
-                  <div className="bg-white rounded-[2.5rem] border border-slate-300 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] p-8 space-y-8">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-bold text-slate-900">Secret API Key</h4>
-                          <p className="text-xs text-slate-500">Use this to authenticate your server-side requests.</p>
-                        </div>
-                        <button className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all">Regenerate</button>
-                      </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-4 bg-slate-950 rounded-2xl border border-slate-800">
-                        <code className="text-blue-400 text-sm font-mono truncate">sk_live_db_51N8W4sH...9x2</code>
-                        <button className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 transition-colors">
-                          <Globe size={16} />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="font-bold text-slate-900">Webhook URL</h4>
-                        <p className="text-xs text-slate-500">We'll send POST requests here when transactions are updated.</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          placeholder="https://your-domain.com/api/webhooks"
-                          className="flex-1 px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        />
-                        <button className="px-8 bg-slate-900 text-white font-black rounded-2xl text-xs hover:bg-slate-800 transition-all">Save</button>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="space-y-4">
-                  <div className="flex items-center gap-2 px-2">
-                    <HelpCircle size={18} className="text-blue-600" />
-                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Documentation Quick Start</h3>
-                  </div>
-                  <div className="bg-slate-950 rounded-[2.5rem] p-8 text-slate-400 font-mono text-xs space-y-4 overflow-hidden relative">
-                    <div className="flex items-center gap-2 text-slate-500 mb-2">
-                      <div className="w-3 h-3 rounded-full bg-red-500/20" />
-                      <div className="w-3 h-3 rounded-full bg-yellow-500/20" />
-                      <div className="w-3 h-3 rounded-full bg-green-500/20" />
-                    </div>
-                    <p className="text-blue-400"># Fetch all available data packages</p>
-                    <p><span className="text-pink-400">curl</span> -X GET https://api.databundle.gh/v1/packages \</p>
-                    <p>  -H <span className="text-green-400">"Authorization: Bearer YOUR_API_KEY"</span></p>
-                    
-                    <p className="text-blue-400 mt-6"># Buy a data bundle</p>
-                    <p><span className="text-pink-400">curl</span> -X POST https://api.databundle.gh/v1/purchase \</p>
-                    <p>  -H <span className="text-green-400">"Content-Type: application/json"</span> \</p>
-                    <p>  -d <span className="text-orange-400">{`{ "package_id": "mtn-5gb", "recipient": "0240000000" }`}</span></p>
-                  </div>
-                </section>
-              </div>
-
-              {/* Right Column: API Status & Stats */}
-              <div className="space-y-6">
-                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-300 shadow-sm">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Environment Status</h4>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl border border-green-100">
-                      <span className="text-xs font-bold text-green-700 uppercase tracking-tighter">Production API</span>
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                        <span className="text-[10px] font-black text-green-600">ONLINE</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl border border-blue-100">
-                      <span className="text-xs font-bold text-blue-700 uppercase tracking-tighter">Sandbox API</span>
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-blue-500 rounded-full" />
-                        <span className="text-[10px] font-black text-blue-600">STABLE</span>
-                      </div>
-                    </div>
-                  </div>
+            <div className="bg-slate-900 rounded-[3rem] p-12 text-center relative overflow-hidden group">
+              <div className="relative z-10 flex flex-col items-center gap-6">
+                <div className="w-24 h-24 bg-blue-600/20 rounded-3xl flex items-center justify-center text-blue-400 mb-2">
+                  <Code size={48} />
                 </div>
-
-                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-300 shadow-sm">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Monthly Usage</h4>
-                  <div className="text-3xl font-black text-slate-900 mb-1">12,402</div>
-                  <p className="text-[10px] text-slate-500 font-bold mb-6">Successful API calls this month</p>
-                  <button className="w-full py-4 bg-slate-900 text-white font-black rounded-2xl text-xs hover:bg-slate-800 transition-all">
-                    Contact Developer Support
+                <div className="space-y-3">
+                  <span className="px-4 py-1.5 bg-blue-600/20 text-blue-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-500/20">
+                    Developer API
+                  </span>
+                  <h2 className="text-4xl font-black text-white">Coming Very Soon</h2>
+                  <p className="text-slate-400 max-w-md mx-auto text-sm leading-relaxed">
+                    Build your own storefront and automate your business using our high-performance JSON API. We're currently in private beta.
+                  </p>
+                </div>
+                <div className="flex gap-4 mt-4">
+                  <button className="px-8 py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-600/30 hover:bg-blue-700 transition-all flex items-center gap-2">
+                    Request Early Access
+                    <ArrowRight size={18} />
+                  </button>
+                  <button className="px-8 py-4 bg-white/5 text-slate-400 font-black rounded-2xl border border-white/10 hover:bg-white/10 transition-all">
+                    View Documentation
                   </button>
                 </div>
               </div>
+              <div className="absolute -right-20 -top-20 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl group-hover:bg-blue-600/20 transition-all duration-700" />
+              <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-blue-400/5 rounded-full blur-3xl" />
             </div>
           </div>
         );
@@ -1126,42 +1062,40 @@ function AgentPageContent() {
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-slate-50">
-                                        {[
-                                          { type: 'SALE', source: 'Link', pkg: 'MTN 10GB', amount: 75, date: '14:20', rec: '0245678123', pay: '0559900112' },
-                                          { type: 'COMMISSION', source: 'Earning', pkg: 'MTN 10GB', amount: 3.75, date: '14:20', rec: '-', pay: '-' },
-                                          { type: 'SALE', source: 'Direct', pkg: 'Telecel 5GB', amount: 35, date: '12:05', rec: '0201122334', pay: '0201122334' },
-                                          { type: 'WITHDRAWAL', source: 'MoMo', pkg: 'Payout Request', amount: -200, date: 'Yesterday', rec: '0244112233', pay: 'Wallet' },
-                                        ].map((tx, idx) => (
-                                          <tr key={idx} className="text-[12px] group hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-8 py-4">
-                                              <div className="flex items-center gap-2">
-                                                <div className={`p-1 rounded-lg ${
-                                                  tx.type === 'SALE' ? 'bg-blue-50 text-blue-600' :
-                                                  tx.type === 'COMMISSION' ? 'bg-green-50 text-green-600' :
-                                                  'bg-orange-50 text-orange-600'
-                                                }`}>
-                                                  {tx.type === 'SALE' ? <ShoppingCart size={12} /> : tx.type === 'COMMISSION' ? <TrendingUp size={12} /> : <Wallet size={12} />}
-                                                </div>
-                                                <div>
-                                                  <div className="font-bold text-slate-900">{tx.pkg}</div>
-                                                  <div className="text-[9px] font-bold text-slate-400 uppercase">{tx.source}</div>
-                                                </div>
-                                              </div>
-                                            </td>
-                                            <td className="px-8 py-4">
-                                              <div className="flex flex-col">
-                                                <span className="text-slate-600 font-mono">Rec: {tx.rec}</span>
-                                                <span className="text-slate-400 font-mono">Pay: {tx.pay}</span>
-                                              </div>
-                                            </td>
-                                            <td className="px-8 py-4">
-                                              <span className={`font-black ${tx.amount > 0 ? 'text-slate-900' : 'text-red-600'}`}>
-                                                {tx.amount > 0 ? `GH₵ ${tx.amount.toFixed(2)}` : `-GH₵ ${Math.abs(tx.amount).toFixed(2)}`}
-                                              </span>
-                                            </td>
-                                            <td className="px-8 py-4 text-right text-slate-400 font-bold">{tx.date}</td>
+                                        {dbTransactions.filter(tx => tx.agent_id === agent.id).length === 0 ? (
+                                          <tr>
+                                            <td colSpan={4} className="px-8 py-10 text-center text-slate-400 font-bold text-[10px]">No transaction history for this agent.</td>
                                           </tr>
-                                        ))}
+                                        ) : dbTransactions.filter(tx => tx.agent_id === agent.id).slice(0, 5).map((tx) => {
+                                          const txDate = new Date(tx.created_at);
+                                          const txTime = txDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                          
+                                          return (
+                                            <tr key={tx.id} className="text-[12px] group hover:bg-slate-50/50 transition-colors">
+                                              <td className="px-8 py-4">
+                                                <div className="flex items-center gap-2">
+                                                  <div className={`p-1 rounded-lg ${tx.status === 'DELIVERED' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                    <ShoppingCart size={12} />
+                                                  </div>
+                                                  <div>
+                                                    <div className="font-bold text-slate-900">{tx.package_name || 'Data Bundle'}</div>
+                                                    <div className="text-[9px] font-bold text-slate-400 uppercase">{tx.type}</div>
+                                                  </div>
+                                                </div>
+                                              </td>
+                                              <td className="px-8 py-4">
+                                                <div className="flex flex-col">
+                                                  <span className="text-slate-600 font-mono">{tx.recipient_phone}</span>
+                                                  <span className="text-slate-400 font-mono">Paid via {tx.payment_method}</span>
+                                                </div>
+                                              </td>
+                                              <td className="px-8 py-4">
+                                                <span className="font-black text-slate-900">GH₵ {Number(tx.amount).toFixed(2)}</span>
+                                              </td>
+                                              <td className="px-8 py-4 text-right text-slate-400 font-bold">{txTime}</td>
+                                            </tr>
+                                          );
+                                        })}
                                       </tbody>
                                     </table>
                                   </div>
@@ -1565,10 +1499,10 @@ function AgentPageContent() {
 }
 const OrderProgressTracker = ({ status }: { status: string }) => {
   const steps = [
-    { label: 'Order Initiated', date: '10:45 AM', sub: 'Request received from Agent' },
-    { label: 'Payment Confirmed', date: '10:46 AM', sub: 'Wallet/MoMo verified' },
-    { label: 'Processing with Provider', date: '10:47 AM', sub: 'Sending to Network Operator' },
-    { label: status === 'FAILED' ? 'Delivery Failed' : 'Order Delivered', date: '10:50 AM', sub: status === 'FAILED' ? 'Provider returned error (Insufficient credit)' : 'Confirmed by Network Operator' },
+    { label: 'Order Initiated', sub: 'Request received from Agent' },
+    { label: 'Payment Confirmed', sub: 'Wallet/MoMo verified' },
+    { label: 'Processing with Provider', sub: 'Sending to Network Operator' },
+    { label: status === 'FAILED' ? 'Delivery Failed' : 'Order Delivered', sub: status === 'FAILED' ? 'Provider returned error' : 'Confirmed by Network Operator' },
   ];
 
   const currentStep = 
@@ -1617,7 +1551,6 @@ const OrderProgressTracker = ({ status }: { status: string }) => {
                     <span className={`text-xs font-black uppercase tracking-widest ${isCompleted ? 'text-slate-900' : 'text-slate-400'}`}>
                       {step.label}
                     </span>
-                    <span className="text-[10px] font-bold text-slate-400">{step.date}</span>
                   </div>
                   <p className="text-[10px] font-medium text-slate-500 mt-0.5">{step.sub}</p>
                   

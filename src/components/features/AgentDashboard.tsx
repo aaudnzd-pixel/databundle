@@ -20,14 +20,12 @@ export const AgentStats = ({ stats }: { stats?: any }) => {
           label="Global Platform Sales" 
           value={`GH₵ ${displayStats.totalSales.toLocaleString()}`} 
           icon={<Globe size={20} className="text-blue-600" />} 
-          trend={{ value: '24%', isUp: true }}
         />
       ) : (
         <StatCard 
           label="Your Total Sales" 
           value={`GH₵ ${displayStats.totalSales.toLocaleString()}`} 
           icon={<TrendingUp size={20} />} 
-          trend={{ value: '12%', isUp: true }}
         />
       )}
       
@@ -35,7 +33,6 @@ export const AgentStats = ({ stats }: { stats?: any }) => {
         label={isAdmin ? "Total Admin Commissions" : "Total Link Commissions"} 
         value={`GH₵ ${displayStats.totalCommissions.toLocaleString()}`} 
         icon={<Wallet size={20} />} 
-        trend={{ value: '15%', isUp: true }}
       />
       
       <StatCard 
