@@ -93,6 +93,7 @@ function AgentPageContent() {
   // 1. Initial Fetch & Real-time Subscription
   useEffect(() => {
     const fetchData = async () => {
+      if (!user) return;
       // Fetch System Settings
       const { data: settingsData } = await supabase
         .from('system_settings')
