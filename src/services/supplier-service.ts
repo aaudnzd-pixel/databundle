@@ -9,21 +9,15 @@ import { BundleCornerSupplierAdapter } from '@/adapters/bundlecorner-supplier';
 class SupplierService {
   private static instance: SupplierAdapter | null = null;
 
-  static getAdapter(): SupplierAdapter {
-    if (this.instance) {
-      return this.instance;
-    }
-
-    const supplierName = config.supplier.activeSupplier.toUpperCase();
+  static getAdapter(forcedSupplier?: string): SupplierAdapter {
+    const supplierName = (forcedSupplier || config.supplier.activeSupplier).toUpperCase();
 
     if (supplierName === 'BUNDLECORNER') {
-      this.instance = new BundleCornerSupplierAdapter(config.supplier.bundleCornerKey);
-    } else {
-      // Defaulting to the Supabase-backed adapter for production-ready persistence
-      this.instance = new SupabaseSupplierAdapter();
+      return new BundleCornerSupplierAdapter(config.supplier.bundleCornerKey);
     }
-
-    return this.instance;
+    
+    // Defaulting to the Supabase-backed adapter for production-ready persistence
+    return new SupabaseSupplierAdapter();
   }
 }
 

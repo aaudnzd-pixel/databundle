@@ -14,7 +14,7 @@ interface PackageListProps {
 import { OrderProgress } from './OrderProgress';
 
 export const PackageList: React.FC<PackageListProps> = ({ initialPackages, isDashboard }) => {
-  const [activeFilter, setActiveFilter] = React.useState<string>('ALL');
+  const [activeFilter, setActiveFilter] = React.useState<string>('MTN');
   
   const {
     selectedPackage,
@@ -39,11 +39,9 @@ export const PackageList: React.FC<PackageListProps> = ({ initialPackages, isDas
     }
   }, [activeOrderStep]);
 
-  const networks = ['ALL', 'MTN', 'TELECEL', 'AIRTEL_TIGO'];
+  const networks = ['MTN', 'TELECEL', 'AIRTEL_TIGO'];
   
-  const filteredPackages = activeFilter === 'ALL' 
-    ? initialPackages 
-    : initialPackages.filter(pkg => pkg.supplier === activeFilter);
+  const filteredPackages = initialPackages.filter(pkg => pkg.supplier === activeFilter);
 
   return (
     <>

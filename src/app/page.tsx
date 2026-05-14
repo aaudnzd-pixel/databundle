@@ -2,12 +2,31 @@ import React from 'react';
 import { Smartphone, Zap, ShieldCheck } from 'lucide-react';
 import SupplierService from '@/services/supplier-service';
 import { PackageList } from '@/components/features/PackageList';
+import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const adapter = SupplierService.getAdapter();
-  const packages = await adapter.getPackages();
+  // Fetch Admin Settings
+  const { data: settings } = await supabase.from('system_settings').select('*').eq('id', 'global_config').single();
+  
+  const activeSupplier = settings?.active_supplier || 'BUNDLECORNER';
+  const margin = settings?.default_commission_rate !== undefined && settings?.default_commission_rate !== null 
+    ? Number(settings.default_commission_rate) 
+    : 0.10; // Fallback to 10% if missing
+
+  const adapter = SupplierService.getAdapter(activeSupplier);
+  const rawPackages = await adapter.getPackages();
+
+  const packages = (rawPackages || []).map(pkg => {
+    const basePrice = Number(pkg.price) || 0;
+    const finalPrice = Number((basePrice + (basePrice * margin)).toFixed(2));
+    
+    return {
+      ...pkg,
+      price: finalPrice
+    };
+  });
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-64px)]">

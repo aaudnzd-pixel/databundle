@@ -63,8 +63,9 @@ function AgentPageContent() {
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [fetchingPackages, setFetchingPackages] = useState(false);
   const [globalMarkup, setGlobalMarkup] = useState(5.0);
-  const [storeFilter, setStoreFilter] = useState<string>('ALL');
+  const [storeFilter, setStoreFilter] = useState<string>('MTN');
   const [individualMarkups, setIndividualMarkups] = useState<Record<string, number>>({});
+  const [isSavingMarkups, setIsSavingMarkups] = useState(false);
   
   // System Management States
   const [systemMaintenance, setSystemMaintenance] = useState(false);
@@ -76,6 +77,7 @@ function AgentPageContent() {
   const [activeSupplier, setActiveSupplier] = useState('HUBTEL');
   const [dbAgents, setDbAgents] = useState<any[]>([]);
   const [dbTransactions, setDbTransactions] = useState<any[]>([]);
+  const [dbWithdrawals, setDbWithdrawals] = useState<any[]>([]);
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
   const [globalCommissionRate, setGlobalCommissionRate] = useState(0.05);
@@ -90,43 +92,89 @@ function AgentPageContent() {
     emailNotifications: true,
   });
 
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState<string>('');
+  const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
+
+  const handleWithdraw = async () => {
+    const amount = parseFloat(withdrawAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid amount.');
+      return;
+    }
+    if (amount > (user?.balance || 0)) {
+      alert('Insufficient commission balance.');
+      return;
+    }
+
+    setIsSubmittingWithdraw(true);
+    try {
+      const { error } = await supabase.from('withdrawals').insert({
+        agent_id: user?.id,
+        amount: amount,
+        momo_number: settings.payoutNumber,
+        momo_name: settings.momoName,
+        status: 'PENDING'
+      });
+
+      if (error) throw error;
+      
+      alert('Withdrawal request submitted successfully! It will be processed to your MoMo number.');
+      setShowWithdrawModal(false);
+      setWithdrawAmount('');
+      // Refresh user balance or just wait for real-time update
+    } catch (err: any) {
+      alert(`Withdrawal failed: ${err.message}`);
+    } finally {
+      setIsSubmittingWithdraw(false);
+    }
+  };
+
   // 1. Initial Fetch & Real-time Subscription
   useEffect(() => {
     const fetchData = async () => {
       if (!user) return;
-      // Fetch System Settings
-      const { data: settingsData } = await supabase
-        .from('system_settings')
-        .select('*')
-        .eq('id', 'global_config')
-        .single();
       
-      if (settingsData) {
-        setSystemMaintenance(settingsData.maintenance_global);
-        setNetworkMaintenance({
-          MTN: settingsData.maintenance_mtn,
-          TELECEL: settingsData.maintenance_telecel,
-          AIRTEL_TIGO: settingsData.maintenance_airtel_tigo,
-        });
-        setActiveSupplier(settingsData.active_supplier);
-        if (settingsData.default_commission_rate) {
-          setGlobalCommissionRate(Number(settingsData.default_commission_rate));
+      setFetchingData(true);
+      try {
+        // 1. Fetch System Settings
+        const { data: settingsData } = await supabase
+          .from('system_settings')
+          .select('*')
+          .eq('id', 'global_config')
+          .single();
+        
+        if (settingsData) {
+          setSystemMaintenance(settingsData.maintenance_global);
+          setNetworkMaintenance({
+            MTN: settingsData.maintenance_mtn,
+            TELECEL: settingsData.maintenance_telecel,
+            AIRTEL_TIGO: settingsData.maintenance_airtel_tigo,
+          });
+          setActiveSupplier(settingsData.active_supplier);
+          if (settingsData.default_commission_rate) {
+            setGlobalCommissionRate(Number(settingsData.default_commission_rate));
+          }
         }
-      }
 
-      // Fetch Agents
-      const { data: agentsData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'AGENT')
-        .order('created_at', { ascending: false });
-      
-      if (agentsData) {
-        setDbAgents(agentsData);
-      }
+        // 2. Fetch Agents (Only if Admin)
+        if (user.role === 'ADMIN') {
+          const { data: agentsData, error: agentsError } = await supabase
+            .from('profiles')
+            .select('*')
+            .neq('id', user.id) // Get everyone except current admin
+            .order('created_at', { ascending: false });
+          
+          if (agentsError) {
+            console.error('Agents Fetch Error:', agentsError);
+          } else {
+            // Filter by role in JS to be safe against case sensitivity or schema variations
+            const agents = agentsData?.filter(p => p.role?.toUpperCase() === 'AGENT') || [];
+            setDbAgents(agents);
+          }
+        }
 
-      // Fetch Individual Markups for current user
-      if (user?.id) {
+        // 3. Fetch Markups
         const { data: markupsData } = await supabase
           .from('agent_markups')
           .select('package_id, markup_price')
@@ -140,30 +188,41 @@ function AgentPageContent() {
           setIndividualMarkups(markupMap);
         }
 
-        // Set global markup from user profile if available
         if (user.global_markup !== undefined) {
           setGlobalMarkup(Number(user.global_markup));
         }
-      }
 
-      // Fetch User-Specific Transactions (Admins see everything, Agents see their own)
-      const txQuery = supabase
-        .from('transactions')
-        .select('*, profiles(name)')
-        .order('created_at', { ascending: false })
-        .limit(20);
-      
-      if (user.role !== 'ADMIN') {
-        txQuery.eq('agent_id', user.id);
-      }
+        // 4. Fetch Transactions
+        const txQuery = supabase
+          .from('transactions')
+          .select('*, profiles(name)')
+          .order('created_at', { ascending: false })
+          .limit(50); // Increased limit for better visibility
+        
+        if (user.role !== 'ADMIN') {
+          txQuery.eq('agent_id', user.id);
+        }
 
-      const { data: txData } = await txQuery;
-      
-      if (txData) {
-        setDbTransactions(txData);
-      }
+        const { data: txData } = await txQuery;
+        if (txData) {
+          setDbTransactions(txData);
+        }
 
-      setFetchingData(false);
+        // 5. Fetch Withdrawals
+        const { data: withdrawalData } = await supabase
+          .from('withdrawals')
+          .select('*, profiles(name)')
+          .order('created_at', { ascending: false });
+        
+        if (withdrawalData) {
+          setDbWithdrawals(withdrawalData);
+        }
+
+      } catch (err) {
+        console.error('Dashboard Load Error:', err);
+      } finally {
+        setFetchingData(false);
+      }
     };
 
     fetchData();
@@ -191,8 +250,20 @@ function AgentPageContent() {
       })
       .subscribe();
 
+    const txSub = supabase
+      .channel('tx_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchData())
+      .subscribe();
+
+    const withdrawSub = supabase
+      .channel('withdraw_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, () => fetchData())
+      .subscribe();
+
     return () => {
       supabase.removeChannel(settingsChannel);
+      supabase.removeChannel(txSub);
+      supabase.removeChannel(withdrawSub);
     };
   }, []);
 
@@ -301,7 +372,6 @@ function AgentPageContent() {
       return () => clearTimeout(timer);
     }
   }, [expandedAgentId, activeTab]);
-
   const navigateToAgent = (agentId: string) => {
     setActiveTab('AGENTS');
     setExpandedAgentId(agentId);
@@ -311,9 +381,27 @@ function AgentPageContent() {
     const fetchPackages = async () => {
       setFetchingPackages(true);
       try {
-        const adapter = SupplierService.getAdapter();
+        const adapter = SupplierService.getAdapter(activeSupplier);
         const data = await adapter.getPackages();
-        setPackages(data);
+        
+        // Use the global commission rate from state (which is synced via first useEffect)
+        let currentMargin = globalCommissionRate;
+        if (currentMargin === 0) {
+          currentMargin = 0.10; // Default fallback if state hasn't loaded yet
+        }
+
+        // Apply Admin Margin to base prices
+        const marginedPackages = (data || []).map(pkg => {
+          const basePrice = Number(pkg.price) || 0;
+          const finalPrice = Number((basePrice + (basePrice * currentMargin)).toFixed(2));
+          
+          return {
+            ...pkg,
+            price: finalPrice
+          };
+        });
+
+        setPackages(marginedPackages);
       } catch (err) {
         console.error('Failed to fetch packages:', err);
       } finally {
@@ -321,7 +409,7 @@ function AgentPageContent() {
       }
     };
     fetchPackages();
-  }, []);
+  }, [activeSupplier, globalCommissionRate]);
 
   useEffect(() => {
     const tab = searchParams.get('tab')?.toUpperCase() as TabType;
@@ -382,13 +470,7 @@ function AgentPageContent() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start mt-8">
               {/* Left Column: Main Content */}
               <div className="lg:col-span-2 space-y-8">
-                <RecentSales 
-                  onViewAll={() => {
-                    setActiveTab('WALLET');
-                    setWalletSubTab('SALES');
-                  }} 
-                  onAgentClick={navigateToAgent}
-                />
+                {/* Reserved for future analytics or charts */}
               </div>
 
               {/* Right Column: Quick Info/Actions */}
@@ -452,7 +534,10 @@ function AgentPageContent() {
                 <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Fetching latest packages...</p>
               </div>
             ) : (
-              <PackageList initialPackages={packages} isDashboard={true} />
+              <PackageList 
+                initialPackages={packages} 
+                isDashboard={true} 
+              />
             )}
           </div>
         );
@@ -530,20 +615,20 @@ function AgentPageContent() {
               </div>
 
               <div className="mt-8">
-                <button
+                <button 
                   onClick={handleSaveMarkups}
                   disabled={isSavingMarkups}
-                  className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-600/30 hover:bg-blue-700 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-5 bg-slate-900 text-white font-black rounded-[2rem] shadow-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {isSavingMarkups ? <Loader2 className="animate-spin" size={20} /> : <ShieldCheck size={20} />}
-                  Save Store Pricing
+                  {isSavingMarkups ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} />}
+                  Save My Store Pricing
                 </button>
               </div>
             </div>
 
             {/* Unified Store Filter */}
             <div className="sticky top-[148px] z-20 bg-white/95 backdrop-blur-md -mx-8 px-8 py-4 mb-8 flex items-center justify-center gap-2 overflow-x-auto scrollbar-hide border-b border-slate-100 transition-all duration-300">
-              {['ALL', 'MTN', 'TELECEL', 'AIRTEL_TIGO'].map((net) => (
+              {['MTN', 'TELECEL', 'AIRTEL_TIGO'].map((net) => (
                 <button
                   key={net}
                   onClick={() => setStoreFilter(net)}
@@ -560,7 +645,7 @@ function AgentPageContent() {
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               {packages
-                .filter(p => storeFilter === 'ALL' || p.supplier === storeFilter)
+                .filter(p => p.supplier === storeFilter)
                 .map((pkg) => {
                   const markup = individualMarkups[pkg.id] ?? globalMarkup;
                   const profitAmount = (pkg.price * markup) / 100;
@@ -753,7 +838,7 @@ function AgentPageContent() {
                     
                     <div className="flex gap-3">
                       <button 
-                        onClick={() => alert('Withdrawal request initiated. Processing to your MoMo number...')}
+                        onClick={() => setShowWithdrawModal(true)}
                         className="w-full py-3 bg-white text-blue-600 font-black rounded-2xl text-xs shadow-lg hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
                       >
                         Withdraw Commissions
@@ -774,9 +859,7 @@ function AgentPageContent() {
                             return date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear() && tx.status === 'DELIVERED';
                           }).reduce((acc, tx) => acc + Number(tx.commission_earned || 0), 0))).toLocaleString('en-GH', { style: 'currency', currency: 'GHS' })}</span>
                         </div>
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="w-[10%] h-full bg-green-500 rounded-full" />
-                        </div>
+                        <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden" />
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-2">
@@ -787,9 +870,7 @@ function AgentPageContent() {
                             return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear() && tx.status === 'DELIVERED';
                           }).reduce((acc, tx) => acc + Number(tx.amount), 0)).toLocaleString('en-GH', { style: 'currency', currency: 'GHS' })}</span>
                         </div>
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="w-[10%] h-full bg-blue-600 rounded-full" />
-                        </div>
+                        <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden" />
                       </div>
                     </div>
                   </div>
@@ -1251,25 +1332,44 @@ function AgentPageContent() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Default Commission Rate</label>
-                      <div className="relative">
-                        <div className="flex items-center gap-3">
-                          <input 
-                            type="range"
-                            min="0"
-                            max="0.20"
-                            step="0.01"
-                            value={globalCommissionRate}
-                            onChange={async (e) => {
-                              const val = parseFloat(e.target.value);
-                              setGlobalCommissionRate(val);
-                              await supabase.from('system_settings').update({ default_commission_rate: val }).eq('id', 'global_config');
-                            }}
-                            className="flex-1 h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                          />
-                          <span className="text-sm font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">{(globalCommissionRate * 100).toFixed(0)}%</span>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between px-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Platform Service Fee (Margin)</label>
+                        <span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">
+                          {(globalCommissionRate * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-4">
+                        <div className="flex items-center gap-4">
+                          <div className="relative flex-1">
+                            <input 
+                              type="range"
+                              min="0"
+                              max="0.25"
+                              step="0.01"
+                              value={globalCommissionRate}
+                              onChange={(e) => setGlobalCommissionRate(parseFloat(e.target.value))}
+                              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="number"
+                              min="0"
+                              max="25"
+                              value={(globalCommissionRate * 100).toFixed(0)}
+                              onChange={(e) => {
+                                const val = Math.min(25, Math.max(0, parseInt(e.target.value) || 0));
+                                setGlobalCommissionRate(val / 100);
+                              }}
+                              className="w-14 px-2 py-2 bg-white border border-slate-200 rounded-xl font-black text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                            />
+                            <span className="text-xs font-black text-slate-400">%</span>
+                          </div>
                         </div>
+                        <p className="text-[9px] text-slate-400 font-medium leading-relaxed italic">
+                          This percentage is added to the base cost of all packages before Agents set their own markups.
+                        </p>
                       </div>
                     </div>
 
@@ -1281,12 +1381,99 @@ function AgentPageContent() {
                     </div>
 
                     <button 
-                      onClick={() => alert('Supplier API updated successfully. Orders will now route through ' + activeSupplier)}
+                      onClick={async () => {
+                        const { error } = await supabase.from('system_settings').update({ 
+                          active_supplier: activeSupplier,
+                          default_commission_rate: globalCommissionRate 
+                        }).eq('id', 'global_config');
+                        
+                        if (error) {
+                          alert('Error saving settings: ' + error.message);
+                        } else {
+                          alert('System settings updated successfully. Margin is set to ' + (globalCommissionRate * 100).toFixed(0) + '%');
+                        }
+                      }}
                       className="w-full py-4 bg-slate-900 text-white font-black rounded-2xl text-xs hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
                     >
                       <Zap size={14} />
-                      Update Provider
+                      Save System Settings
                     </button>
+                  </div>
+                </section>
+
+                {/* 4. Pending Payout Requests */}
+                <section className="space-y-4">
+                  <div className="flex items-center gap-2 px-2">
+                    <Wallet size={18} className="text-blue-600" />
+                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Pending Payout Requests</h3>
+                  </div>
+                  <div className="bg-white rounded-[2.5rem] border border-slate-300 shadow-sm overflow-hidden">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                          <th className="px-8 py-4">Agent</th>
+                          <th className="px-8 py-4">Amount</th>
+                          <th className="px-8 py-4">Target (MoMo)</th>
+                          <th className="px-8 py-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {dbWithdrawals.filter(w => w.status === 'PENDING').length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="px-8 py-10 text-center text-slate-400 font-bold text-xs italic">No pending payout requests.</td>
+                          </tr>
+                        ) : dbWithdrawals.filter(w => w.status === 'PENDING').map((w) => (
+                          <tr key={w.id} className="text-sm hover:bg-slate-50/50 transition-colors">
+                            <td className="px-8 py-5">
+                              <div className="font-bold text-slate-900">{w.profiles?.name || 'Unknown'}</div>
+                              <div className="text-[10px] text-slate-400 font-bold uppercase">{new Date(w.created_at).toLocaleDateString()}</div>
+                            </td>
+                            <td className="px-8 py-5">
+                              <div className="font-black text-blue-600">GH₵ {Number(w.amount).toFixed(2)}</div>
+                            </td>
+                            <td className="px-8 py-5">
+                              <div className="font-bold text-slate-900 font-mono text-xs">{w.momo_number}</div>
+                              <div className="text-[10px] text-slate-400 font-bold uppercase">{w.momo_name}</div>
+                            </td>
+                            <td className="px-8 py-5 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button 
+                                  onClick={async () => {
+                                    if (confirm('Approve and mark this payout as COMPLETED?')) {
+                                      const { error } = await supabase.from('withdrawals').update({ status: 'COMPLETED' }).eq('id', w.id);
+                                      if (error) alert(error.message);
+                                      else {
+                                        // Also deduct from agent profile balance
+                                        const { error: profileError } = await supabase.rpc('deduct_agent_balance', {
+                                          p_agent_id: w.agent_id,
+                                          p_amount: w.amount
+                                        });
+                                        if (profileError) alert('Status updated but balance deduction failed: ' + profileError.message);
+                                        else alert('Payout completed and balance updated!');
+                                      }
+                                    }
+                                  }}
+                                  className="px-4 py-2 bg-green-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-lg shadow-green-600/20 hover:scale-105 transition-all"
+                                >
+                                  Complete
+                                </button>
+                                <button 
+                                  onClick={async () => {
+                                    if (confirm('REJECT this payout request?')) {
+                                      const { error } = await supabase.from('withdrawals').update({ status: 'REJECTED' }).eq('id', w.id);
+                                      if (error) alert(error.message);
+                                    }
+                                  }}
+                                  className="px-4 py-2 bg-white border border-red-100 text-red-600 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </section>
 
@@ -1455,13 +1642,26 @@ function AgentPageContent() {
                   {activeTab === 'OVERVIEW' ? 'Here is a summary of the system performance today.' : `Manage ${activeTab.toLowerCase()} settings and system parameters.`}
                 </p>
               </div>
-              <button 
-                onClick={logout}
-                className="flex items-center gap-2 px-6 py-3 bg-white text-red-600 font-bold rounded-2xl border border-red-100 hover:bg-red-50 transition-all text-sm"
-              >
-                <LogOut size={18} />
-                Logout
-              </button>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xs">
+                      {user.name ? user.name[0] : 'U'}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-slate-900 leading-none">{user.name}</span>
+                      <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest mt-1">
+                        {user.role} Account
+                      </span>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={logout}
+                    className="flex items-center gap-2 px-6 py-3 bg-white text-red-600 font-bold rounded-2xl border border-red-100 hover:bg-red-50 transition-all text-sm"
+                  >
+                    <LogOut size={18} />
+                    Logout
+                  </button>
+                </div>
             </div>
           </div>
 
@@ -1490,6 +1690,93 @@ function AgentPageContent() {
           {renderContent()}
         </div>
       </main>
+
+      {/* Withdrawal Modal */}
+      {showWithdrawModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
+                  <Wallet size={20} />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 uppercase tracking-widest text-sm">Withdraw Commission</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Commission Payout</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowWithdrawModal(false)}
+                className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-400"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-8 space-y-6">
+              <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-1">Available Commissions</span>
+                  <span className="text-2xl font-black text-blue-600 tracking-tight">GH₵ {user?.balance?.toLocaleString() || '0.00'}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-1">Payout Target</span>
+                  <span className="text-xs font-black text-blue-900 block">{settings.payoutNumber}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Withdrawal Amount (GHS)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    placeholder="Enter amount to withdraw..."
+                    className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-lg"
+                  />
+                  <div className="absolute right-4 top-4 text-xs font-black text-slate-300">GHS</div>
+                </div>
+                <div className="flex justify-between px-2">
+                  <button 
+                    onClick={() => setWithdrawAmount(user?.balance?.toString() || '0')}
+                    className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline"
+                  >
+                    Withdraw All
+                  </button>
+                  <span className="text-[9px] font-bold text-slate-400">Min. Withdrawal: GH₵ 1.00</span>
+                </div>
+              </div>
+
+              <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl flex gap-3">
+                <AlertCircle size={18} className="text-orange-500 shrink-0" />
+                <p className="text-[10px] font-bold text-orange-700 leading-relaxed">
+                  Funds will be sent to <span className="font-black underline">{settings.payoutNumber}</span> ({settings.momoName}). 
+                  Ensure your payout details are correct in settings.
+                </p>
+              </div>
+
+              <button
+                onClick={handleWithdraw}
+                disabled={isSubmittingWithdraw || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
+                className="w-full py-5 bg-blue-600 text-white font-black rounded-3xl shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:grayscale"
+              >
+                {isSubmittingWithdraw ? (
+                  <>
+                    <Loader2 className="animate-spin" size={20} />
+                    Processing Payout...
+                  </>
+                ) : (
+                  <>
+                    <Zap size={20} />
+                    Confirm Withdrawal
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
