@@ -119,24 +119,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       commissions: 0.00
     });
 
-    // 3. Graceful Synchronization Wait
-    // Sometimes Supabase takes a split second to propagate the new user session
-    // We wait until we can actually fetch the profile back before proceeding
+    // 3. Graceful Synchronization Wait & Force Update
     let retries = 5;
-    let profileVerified = false;
+    let finalProfile = null;
     
-    while (retries > 0 && !profileVerified) {
-      const { data: check } = await supabase.from('profiles').select('id').eq('id', authData.user.id).single();
+    while (retries > 0 && !finalProfile) {
+      const { data: check } = await supabase.from('profiles').select('*').eq('id', authData.user.id).single();
       if (check) {
-        profileVerified = true;
+        finalProfile = check;
       } else {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+        await new Promise(resolve => setTimeout(resolve, 500));
         retries--;
       }
     }
 
+    if (finalProfile) {
+      setUser(finalProfile as User);
+    }
+
     setIsLoading(false);
-    return profileVerified;
+    return !!finalProfile;
   };
 
   const logout = async () => {
