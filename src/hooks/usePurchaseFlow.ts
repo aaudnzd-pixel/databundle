@@ -85,9 +85,8 @@ export function usePurchaseFlow() {
       }
     }
 
-    // MOCK PAYMENT SUCCESS (In production, this would wait for Paystack/Momo confirmation)
-    setTimeout(async () => {
-      const transactionId = `ref-${paymentMethod.toLowerCase()}-${Math.random().toString(36).substr(2, 9)}`;
+    const processOrder = async (pMethod: PaymentMethod, ref?: string) => {
+      const transactionId = ref || `ref-wallet-${Math.random().toString(36).substr(2, 9)}`;
       const commissionRate = settings?.default_commission_rate ? Number(settings.default_commission_rate) : 0.05;
       const commissionEarned = (selectedPackage.price * commissionRate);
 
@@ -98,19 +97,19 @@ export function usePurchaseFlow() {
         amount: selectedPackage.price,
         commission_earned: commissionEarned,
         status: 'PAID',
-        funding_source: paymentMethod,
+        funding_source: pMethod,
         supplier_id: transactionId
       });
 
       if (txError) {
         console.error('Transaction logging error:', txError.message);
-        setError('An error occurred while processing your order. Please try again.');
+        setError('An error occurred while logging your order. Please contact support.');
         setIsProcessing(false);
         return;
       }
 
       // 2. Update User Balance if using Wallet
-      if (paymentMethod === 'WALLET' && user) {
+      if (pMethod === 'WALLET' && user) {
         const { error: balanceError } = await supabase
           .from('profiles')
           .update({ 
@@ -129,12 +128,12 @@ export function usePurchaseFlow() {
       setIsProcessing(false);
       closePurchaseModal();
 
-      // Step 2: PENDING (after 2 seconds of 'PAID')
+      // Step 2: PENDING (Processing with Supplier)
       setTimeout(async () => {
         setActiveOrderStep('PENDING');
         await supabase.from('transactions').update({ status: 'PROCESSING' }).eq('supplier_id', transactionId);
         
-        // Step 3: DELIVERED (after 5 seconds of 'PENDING')
+        // Step 3: DELIVERED (Final Success)
         setTimeout(async () => {
           setActiveOrderStep('DELIVERED');
           await supabase.from('transactions').update({ status: 'DELIVERED' }).eq('supplier_id', transactionId);
@@ -143,8 +142,28 @@ export function usePurchaseFlow() {
           setTimeout(() => setActiveOrderStep(null), 10000);
         }, 5000);
       }, 2000);
+    };
 
-    }, 2000);
+    if (paymentMethod === 'MOMO') {
+      initializePayment({
+        amount: selectedPackage.price,
+        metadata: {
+          packageId: selectedPackage.id,
+          packageName: selectedPackage.name,
+          recipient: phoneNumber,
+          agentId: user?.id || 'GUEST'
+        },
+        onSuccess: (response) => {
+          processOrder('MOMO', response.reference);
+        },
+        onClose: () => {
+          setIsProcessing(false);
+        }
+      });
+    } else {
+      // Direct Wallet Processing
+      await processOrder('WALLET');
+    }
   };
 
   return {
