@@ -5,7 +5,7 @@ import { OrderStep } from '@/components/features/OrderProgress';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { SupplierService } from '@/services/supplier-service';
+import SupplierService from '@/services/supplier-service';
 
 export type PaymentMethod = 'WALLET' | 'MOMO';
 
