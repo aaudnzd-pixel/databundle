@@ -78,6 +78,7 @@ function AgentPageContent() {
   const [dbTransactions, setDbTransactions] = useState<any[]>([]);
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
+  const [globalCommissionRate, setGlobalCommissionRate] = useState(0.05);
   const [fetchingData, setFetchingData] = useState(true);
   const [settings, setSettings] = useState({
     twoFactor: false,
@@ -107,6 +108,9 @@ function AgentPageContent() {
           AIRTEL_TIGO: settingsData.maintenance_airtel_tigo,
         });
         setActiveSupplier(settingsData.active_supplier);
+        if (settingsData.default_commission_rate) {
+          setGlobalCommissionRate(Number(settingsData.default_commission_rate));
+        }
       }
 
       // Fetch Agents
@@ -118,6 +122,27 @@ function AgentPageContent() {
       
       if (agentsData) {
         setDbAgents(agentsData);
+      }
+
+      // Fetch Individual Markups for current user
+      if (user?.id) {
+        const { data: markupsData } = await supabase
+          .from('agent_markups')
+          .select('package_id, markup_price')
+          .eq('agent_id', user.id);
+        
+        if (markupsData) {
+          const markupMap: Record<string, number> = {};
+          markupsData.forEach(m => {
+            markupMap[m.package_id] = Number(m.markup_price);
+          });
+          setIndividualMarkups(markupMap);
+        }
+
+        // Set global markup from user profile if available
+        if (user.global_markup !== undefined) {
+          setGlobalMarkup(Number(user.global_markup));
+        }
       }
 
       // Fetch Transactions
@@ -153,6 +178,9 @@ function AgentPageContent() {
           AIRTEL_TIGO: newData.maintenance_airtel_tigo,
         });
         setActiveSupplier(newData.active_supplier);
+        if (newData.default_commission_rate) {
+          setGlobalCommissionRate(Number(newData.default_commission_rate));
+        }
       })
       .subscribe();
 
@@ -160,6 +188,45 @@ function AgentPageContent() {
       supabase.removeChannel(settingsChannel);
     };
   }, []);
+
+  const handleSaveMarkups = async () => {
+    if (!user) return;
+    
+    setFetchingData(true);
+    try {
+      // 1. Update Global Markup in Profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ global_markup: globalMarkup })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
+      // 2. Prepare Individual Markup Data
+      const markupEntries = Object.entries(individualMarkups).map(([packageId, markup]) => ({
+        agent_id: user.id,
+        package_id: packageId,
+        markup_price: markup
+      }));
+
+      // 3. Clear existing markups and insert new ones
+      await supabase.from('agent_markups').delete().eq('agent_id', user.id);
+      
+      if (markupEntries.length > 0) {
+        const { error: markupError } = await supabase
+          .from('agent_markups')
+          .insert(markupEntries);
+        if (markupError) throw markupError;
+      }
+
+      alert('Store pricing synchronized to database successfully! 🚀');
+    } catch (err: any) {
+      console.error('Error saving markups:', err.message);
+      alert('Failed to save markups: ' + err.message);
+    } finally {
+      setFetchingData(false);
+    }
+  };
 
   const handleGlobalToggle = async () => {
     const newState = !systemMaintenance;
@@ -457,10 +524,11 @@ function AgentPageContent() {
 
               <div className="mt-8">
                 <button
-                  onClick={() => alert('Store pricing updated successfully!')}
-                  className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-600/30 hover:bg-blue-700 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3"
+                  onClick={handleSaveMarkups}
+                  disabled={fetchingData}
+                  className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-600/30 hover:bg-blue-700 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <ShieldCheck size={20} />
+                  {fetchingData ? <Loader2 className="animate-spin" size={20} /> : <ShieldCheck size={20} />}
                   Save Store Pricing
                 </button>
               </div>
@@ -1240,6 +1308,28 @@ function AgentPageContent() {
                           <option value="MOCK">Development Sandbox</option>
                         </select>
                         <ChevronDown className="absolute right-4 top-4.5 text-slate-400 pointer-events-none" size={20} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Default Commission Rate</label>
+                      <div className="relative">
+                        <div className="flex items-center gap-3">
+                          <input 
+                            type="range"
+                            min="0"
+                            max="0.20"
+                            step="0.01"
+                            value={globalCommissionRate}
+                            onChange={async (e) => {
+                              const val = parseFloat(e.target.value);
+                              setGlobalCommissionRate(val);
+                              await supabase.from('system_settings').update({ default_commission_rate: val }).eq('id', 'global_config');
+                            }}
+                            className="flex-1 h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                          />
+                          <span className="text-sm font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">{(globalCommissionRate * 100).toFixed(0)}%</span>
+                        </div>
                       </div>
                     </div>
 

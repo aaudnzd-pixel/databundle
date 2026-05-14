@@ -88,7 +88,8 @@ export function usePurchaseFlow() {
     // MOCK PAYMENT SUCCESS (In production, this would wait for Paystack/Momo confirmation)
     setTimeout(async () => {
       const transactionId = `ref-${paymentMethod.toLowerCase()}-${Math.random().toString(36).substr(2, 9)}`;
-      const commissionEarned = (selectedPackage.price * 0.05); // Standard 5% commission
+      const commissionRate = settings?.default_commission_rate ? Number(settings.default_commission_rate) : 0.05;
+      const commissionEarned = (selectedPackage.price * commissionRate);
 
       // 1. Create Transaction in Supabase
       const { error: txError } = await supabase.from('transactions').insert({

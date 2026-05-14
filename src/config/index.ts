@@ -6,18 +6,18 @@ export const config: Config = {
   app: {
     name: 'Databundle',
     version: '0.1.0',
-    environment: env,
-    isDev: env === 'development',
+    environment: 'production',
+    isDev: false,
   },
   supplier: {
-    activeSupplier: process.env.NEXT_PUBLIC_ACTIVE_SUPPLIER || 'MOCK',
-    mockEnabled: process.env.NEXT_PUBLIC_MOCK_SUPPLIER === 'true' || env === 'development',
+    activeSupplier: 'MOCK', // Defaulting to MOCK for now, change to HUBTEL when live
+    mockEnabled: true,
   },
   commissions: {
-    defaultRate: parseFloat(process.env.NEXT_PUBLIC_DEFAULT_COMMISSION_RATE || '0.05'),
+    defaultRate: 0.05, // Fixed 5% default
   },
   paystack: {
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder',
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
   },
 };
 
