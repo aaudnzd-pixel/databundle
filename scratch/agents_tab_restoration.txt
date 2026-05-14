@@ -1,0 +1,174 @@
+      case 'AGENTS':
+        return (
+          <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+            <div className="bg-white rounded-[2.5rem] border border-slate-300 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] overflow-hidden">
+              <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900">Agent Network</h3>
+                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">Live performance management</p>
+                </div>
+                <div className="flex gap-4">
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      placeholder="Search agents..." 
+                      className="pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-bold w-64 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm"
+                    />
+                    <Users className="absolute left-3 top-3.5 text-slate-400" size={18} />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      <th className="px-10 py-5">Agent</th>
+                      <th className="px-10 py-5">Summary</th>
+                      <th className="px-10 py-5">Status</th>
+                      <th className="px-10 py-5 text-right">Activity</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {[
+                      { id: 'AG-8821', name: 'Samuel Tsrah', email: 'sam@agent.com', phone: '0244112233', sales: 4250, commissions: 850.50, balance: 1240, status: 'ACTIVE' },
+                      { id: 'AG-9122', name: 'Yaw Mensah', email: 'yaw@data.gh', phone: '0559988776', sales: 12800, commissions: 2140.00, balance: 3450, status: 'ACTIVE' },
+                      { id: 'AG-0341', name: 'Kofi Boateng', email: 'kofi@bundle.com', phone: '0200011223', sales: 850, commissions: 125.20, balance: 120, status: 'WARNING' },
+                      { id: 'AG-7723', name: 'Ama Richardson', email: 'ama@store.gh', phone: '0261122334', sales: 3100, commissions: 420.00, balance: 450, status: 'ACTIVE' },
+                    ].map((agent) => {
+                      const isExpanded = expandedAgentId === agent.id;
+                      return (
+                        <React.Fragment key={agent.id}>
+                          <tr 
+                            onClick={() => setExpandedAgentId(isExpanded ? null : agent.id)}
+                            className={`group cursor-pointer transition-all ${isExpanded ? 'bg-blue-50/30' : 'hover:bg-slate-50/50'}`}
+                          >
+                            <td className="px-10 py-8">
+                              <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg transition-colors ${isExpanded ? 'bg-blue-600 text-white shadow-lg' : 'bg-blue-50 text-blue-600'}`}>
+                                  {agent.name[0]}
+                                </div>
+                                <div>
+                                  <div className="font-black text-slate-900">{agent.name}</div>
+                                  <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{agent.id}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-10 py-8">
+                              <div className="flex flex-col">
+                                <span className="text-sm font-black text-slate-900">GH₵ {agent.sales.toLocaleString()}</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">Total Sales</span>
+                              </div>
+                            </td>
+                            <td className="px-10 py-8">
+                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                agent.status === 'ACTIVE' ? 'bg-green-50 text-green-600' :
+                                'bg-orange-50 text-orange-600'
+                              }`}>
+                                {agent.status}
+                              </span>
+                            </td>
+                            <td className="px-10 py-8 text-right">
+                              <div className="flex items-center justify-end gap-2 text-slate-400 group-hover:text-blue-600 transition-colors">
+                                <span className="text-[10px] font-black uppercase tracking-widest">{isExpanded ? 'Close' : 'View History'}</span>
+                                {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                              </div>
+                            </td>
+                          </tr>
+                          
+                          {isExpanded && (
+                            <tr>
+                              <td colSpan={4} className="p-0 border-b border-slate-100 bg-slate-50/30">
+                                <div className="p-10 space-y-8 animate-in slide-in-from-top-4 duration-500">
+                                  {/* Stats Grid */}
+                                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                                    <div className="bg-blue-600 py-6 px-8 rounded-[2.5rem] shadow-xl shadow-blue-600/20 text-white relative overflow-hidden group col-span-2 lg:col-span-1 border border-white/10 flex items-center justify-between">
+                                      <div className="relative z-10">
+                                        <span className="text-[10px] font-black opacity-60 uppercase tracking-widest block mb-1">Available Balance</span>
+                                        <span className="text-2xl font-black leading-none block">GH₵ {agent.balance.toFixed(2)}</span>
+                                      </div>
+                                      <Wallet size={32} className="opacity-10 group-hover:scale-110 transition-transform duration-500" />
+                                    </div>
+                                    <div className="bg-white py-6 px-8 rounded-[2.5rem] border border-slate-200 shadow-sm col-span-1">
+                                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Total Sales</span>
+                                      <span className="text-xl font-black text-slate-900 block truncate">GH₵ {agent.sales.toFixed(2)}</span>
+                                      <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-green-600">
+                                        <TrendingUp size={12} />
+                                        <span>+12%</span>
+                                      </div>
+                                    </div>
+                                    <div className="bg-white py-6 px-8 rounded-[2.5rem] border border-slate-200 shadow-sm col-span-1">
+                                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Commissions</span>
+                                      <span className="text-xl font-black text-blue-600 block truncate">GH₵ {agent.commissions.toFixed(2)}</span>
+                                      <div className="mt-1 text-[10px] font-bold text-slate-400 uppercase truncate tracking-tighter">Lifetime Earnings</div>
+                                    </div>
+                                  </div>
+
+                                  {/* History Table */}
+                                  <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+                                    <div className="px-6 py-4 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
+                                      <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Combined History Log</h4>
+                                      <button className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">View Full Logs</button>
+                                    </div>
+                                    <table className="w-full text-left">
+                                      <thead>
+                                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">
+                                          <th className="px-8 py-4">Transaction</th>
+                                          <th className="px-8 py-4">Numbers (Rec / Pay)</th>
+                                          <th className="px-8 py-4">Amount</th>
+                                          <th className="px-8 py-4 text-right">Time</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-50">
+                                        {[
+                                          { type: 'SALE', source: 'Link', pkg: 'MTN 10GB', amount: 75, date: '14:20', rec: '0245678123', pay: '0559900112' },
+                                          { type: 'COMMISSION', source: 'Earning', pkg: 'MTN 10GB', amount: 3.75, date: '14:20', rec: '-', pay: '-' },
+                                          { type: 'SALE', source: 'Direct', pkg: 'Telecel 5GB', amount: 35, date: '12:05', rec: '0201122334', pay: '0201122334' },
+                                          { type: 'WITHDRAWAL', source: 'MoMo', pkg: 'Payout Request', amount: -200, date: 'Yesterday', rec: '0244112233', pay: 'Wallet' },
+                                        ].map((tx, idx) => (
+                                          <tr key={idx} className="text-[12px] group hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-8 py-4">
+                                              <div className="flex items-center gap-2">
+                                                <div className={`p-1 rounded-lg ${
+                                                  tx.type === 'SALE' ? 'bg-blue-50 text-blue-600' :
+                                                  tx.type === 'COMMISSION' ? 'bg-green-50 text-green-600' :
+                                                  'bg-orange-50 text-orange-600'
+                                                }`}>
+                                                  {tx.type === 'SALE' ? <ShoppingCart size={12} /> : tx.type === 'COMMISSION' ? <TrendingUp size={12} /> : <Wallet size={12} />}
+                                                </div>
+                                                <div>
+                                                  <div className="font-bold text-slate-900">{tx.pkg}</div>
+                                                  <div className="text-[9px] font-bold text-slate-400 uppercase">{tx.source}</div>
+                                                </div>
+                                              </div>
+                                            </td>
+                                            <td className="px-8 py-4">
+                                              <div className="flex flex-col">
+                                                <span className="text-slate-600 font-mono">Rec: {tx.rec}</span>
+                                                <span className="text-slate-400 font-mono">Pay: {tx.pay}</span>
+                                              </div>
+                                            </td>
+                                            <td className="px-8 py-4">
+                                              <span className={`font-black ${tx.amount > 0 ? 'text-slate-900' : 'text-red-600'}`}>
+                                                {tx.amount > 0 ? `GH₵ ${tx.amount.toFixed(2)}` : `-GH₵ ${Math.abs(tx.amount).toFixed(2)}`}
+                                              </span>
+                                            </td>
+                                            <td className="px-8 py-4 text-right text-slate-400 font-bold">{tx.date}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );

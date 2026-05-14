@@ -1,0 +1,10 @@
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sidebar Column: Financial Summary */}
+              <div className="space-y-6">
+                <div className="bg-blue-600 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-blue-600/30 relative overflow-hidden">
+                  <div className="relative z-10">
