@@ -5,6 +5,7 @@ import { OrderStep } from '@/components/features/OrderProgress';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { SupplierService } from '@/services/supplier-service';
 
 export type PaymentMethod = 'WALLET' | 'MOMO';
 
@@ -129,19 +130,32 @@ export function usePurchaseFlow() {
       closePurchaseModal();
 
       // Step 2: PENDING (Processing with Supplier)
-      setTimeout(async () => {
-        setActiveOrderStep('PENDING');
-        await supabase.from('transactions').update({ status: 'PROCESSING' }).eq('supplier_id', transactionId);
-        
-        // Step 3: DELIVERED (Final Success)
-        setTimeout(async () => {
+      setActiveOrderStep('PENDING');
+      await supabase.from('transactions').update({ status: 'PROCESSING' }).eq('supplier_id', transactionId);
+
+      try {
+        const adapter = SupplierService.getAdapter();
+        const deliveryResult = await adapter.purchaseBundle(selectedPackage.id, phoneNumber);
+
+        if (deliveryResult.success) {
+          // Step 3: DELIVERED (Final Success)
           setActiveOrderStep('DELIVERED');
-          await supabase.from('transactions').update({ status: 'DELIVERED' }).eq('supplier_id', transactionId);
-          
-          // Clear progress after 10 seconds
-          setTimeout(() => setActiveOrderStep(null), 10000);
-        }, 5000);
-      }, 2000);
+          await supabase.from('transactions').update({ 
+            status: 'DELIVERED',
+            supplier_id: deliveryResult.transactionId || transactionId 
+          }).eq('supplier_id', transactionId);
+        } else {
+          // Handle delivery failure
+          setError(deliveryResult.message || 'Payment received, but data delivery failed. Our team has been notified.');
+          await supabase.from('transactions').update({ status: 'FAILED' }).eq('supplier_id', transactionId);
+        }
+      } catch (err) {
+        console.error('Delivery Error:', err);
+        setError('A technical error occurred during delivery. Please contact support.');
+      }
+
+      // Clear progress after 10 seconds
+      setTimeout(() => setActiveOrderStep(null), 10000);
     };
 
     if (paymentMethod === 'MOMO') {
