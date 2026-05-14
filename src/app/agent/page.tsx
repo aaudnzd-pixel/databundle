@@ -982,7 +982,7 @@ function AgentPageContent() {
                             <td className="px-10 py-8">
                               <div className="flex flex-col">
                                 <span className="text-sm font-black text-slate-900">GH₵ {(agent.balance + agent.commissions).toLocaleString()}</span>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">Value Profile</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">Total Capital</span>
                               </div>
                             </td>
                             <td className="px-10 py-8">
@@ -1023,7 +1023,7 @@ function AgentPageContent() {
                                       }</span>
                                       <div className="mt-1 flex items-center gap-1 text-[10px] font-bold text-green-600">
                                         <TrendingUp size={12} />
-                                        <span>Real Data</span>
+                                        <span>Transaction Audit</span>
                                       </div>
                                     </div>
                                     <div className="bg-white py-6 px-8 rounded-[2.5rem] border border-slate-200 shadow-sm col-span-1">
@@ -1403,18 +1403,18 @@ function AgentPageContent() {
                       <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Connected MoMo</span>
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-blue-900 leading-none">
-                          {(!settings.payoutNumber || settings.payoutNumber === '0240000000') ? 'No Account Connected' : settings.payoutNumber}
+                          {!settings.payoutNumber ? 'No Account Connected' : settings.payoutNumber}
                         </span>
-                        {(!settings.payoutNumber || settings.payoutNumber === '0240000000') ? null : (
+                        {!settings.payoutNumber ? null : (
                           <span className="text-[10px] font-black bg-blue-600 text-white px-2 py-0.5 rounded uppercase">Primary</span>
                         )}
                       </div>
                       <div className="text-[10px] text-blue-400 font-medium">
-                        {(!settings.payoutNumber || settings.payoutNumber === '0240000000') ? 'Click below to connect' : settings.momoName}
+                        {!settings.payoutNumber ? 'Click below to connect' : settings.momoName}
                       </div>
                     </div>
                     <button className="w-full py-4 border border-slate-200 text-slate-600 font-bold rounded-2xl text-xs hover:bg-slate-50 transition-all">
-                      {(!settings.payoutNumber || settings.payoutNumber === '0240000000') ? 'Connect MoMo Account' : 'Change Payout Method'}
+                      {!settings.payoutNumber ? 'Connect MoMo Account' : 'Change Payout Method'}
                     </button>
                   </div>
                 </section>
