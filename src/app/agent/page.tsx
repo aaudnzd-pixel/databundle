@@ -145,12 +145,18 @@ function AgentPageContent() {
         }
       }
 
-      // Fetch Transactions
-      const { data: txData } = await supabase
+      // Fetch User-Specific Transactions (Admins see everything, Agents see their own)
+      const txQuery = supabase
         .from('transactions')
         .select('*, profiles(name)')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
+      
+      if (user.role !== 'ADMIN') {
+        txQuery.eq('agent_id', user.id);
+      }
+
+      const { data: txData } = await txQuery;
       
       if (txData) {
         setDbTransactions(txData);
@@ -796,11 +802,13 @@ function AgentPageContent() {
                   <div className="bg-white rounded-[2.5rem] border border-slate-300 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] p-8 space-y-8">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-bold text-slate-900">Secret API Key</h4>
                           <p className="text-xs text-slate-500">Use this to authenticate your server-side requests.</p>
                         </div>
                         <button className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all">Regenerate</button>
+                      </div>
                       </div>
                       <div className="flex items-center gap-3 p-4 bg-slate-950 rounded-2xl border border-slate-800">
                         <code className="text-blue-400 text-sm font-mono truncate">sk_live_db_51N8W4sH...9x2</code>
@@ -1458,13 +1466,19 @@ function AgentPageContent() {
                     <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 space-y-1">
                       <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Connected MoMo</span>
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-blue-900">{settings.payoutNumber}</span>
-                        <span className="text-[10px] font-black bg-blue-600 text-white px-2 py-0.5 rounded uppercase">Primary</span>
+                        <span className="font-bold text-blue-900 leading-none">
+                          {(!settings.payoutNumber || settings.payoutNumber === '0240000000') ? 'No Account Connected' : settings.payoutNumber}
+                        </span>
+                        {(!settings.payoutNumber || settings.payoutNumber === '0240000000') ? null : (
+                          <span className="text-[10px] font-black bg-blue-600 text-white px-2 py-0.5 rounded uppercase">Primary</span>
+                        )}
                       </div>
-                      <div className="text-[10px] text-blue-400 font-medium">{settings.momoName}</div>
+                      <div className="text-[10px] text-blue-400 font-medium">
+                        {(!settings.payoutNumber || settings.payoutNumber === '0240000000') ? 'Click below to connect' : settings.momoName}
+                      </div>
                     </div>
                     <button className="w-full py-4 border border-slate-200 text-slate-600 font-bold rounded-2xl text-xs hover:bg-slate-50 transition-all">
-                      Change Payout Method
+                      {(!settings.payoutNumber || settings.payoutNumber === '0240000000') ? 'Connect MoMo Account' : 'Change Payout Method'}
                     </button>
                   </div>
                 </section>
