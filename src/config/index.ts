@@ -10,8 +10,9 @@ export const config: Config = {
     isDev: false,
   },
   supplier: {
-    activeSupplier: 'MOCK', // Defaulting to MOCK for now, change to HUBTEL when live
+    activeSupplier: 'MOCK', // Defaulting to MOCK for now, change to BUNDLECORNER when live
     mockEnabled: true,
+    bundleCornerKey: process.env.BUNDLECORNER_API_KEY || '',
   },
   commissions: {
     defaultRate: 0.05, // Fixed 5% default

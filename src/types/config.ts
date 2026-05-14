@@ -10,6 +10,7 @@ export interface AppConfig {
 export interface SupplierConfig {
   activeSupplier: string;
   mockEnabled: boolean;
+  bundleCornerKey: string;
 }
 
 export interface CommissionConfig {

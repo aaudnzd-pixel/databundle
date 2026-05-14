@@ -1311,6 +1311,7 @@ function AgentPageContent() {
                           onChange={(e) => setActiveSupplier(e.target.value)}
                           className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-sm text-slate-900 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         >
+                          <option value="BUNDLECORNER">BundleCorner API (Real)</option>
                           <option value="HUBTEL">Hubtel API (Default)</option>
                           <option value="PAYSTACK">Paystack Dedicated</option>
                           <option value="NALO">Nalo Solutions</option>

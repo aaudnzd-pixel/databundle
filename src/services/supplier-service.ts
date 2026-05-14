@@ -4,6 +4,7 @@ import { MockSupplierAdapter } from '@/adapters/mock-supplier';
 import { MtnSupplierAdapter } from '@/adapters/mtn-supplier';
 import { TelecelSupplierAdapter } from '@/adapters/telecel-supplier';
 import { SupabaseSupplierAdapter } from '@/adapters/supabase-supplier';
+import { BundleCornerSupplierAdapter } from '@/adapters/bundlecorner-supplier';
 
 class SupplierService {
   private static instance: SupplierAdapter | null = null;
@@ -15,10 +16,12 @@ class SupplierService {
 
     const supplierName = config.supplier.activeSupplier.toUpperCase();
 
-    // In the future, we will have a RealAggregatorAdapter
-    // For now, we use Mock for development
-    // Using the Supabase-backed adapter for production-ready persistence
-    this.instance = new SupabaseSupplierAdapter();
+    if (supplierName === 'BUNDLECORNER') {
+      this.instance = new BundleCornerSupplierAdapter(config.supplier.bundleCornerKey);
+    } else {
+      // Defaulting to the Supabase-backed adapter for production-ready persistence
+      this.instance = new SupabaseSupplierAdapter();
+    }
 
     return this.instance;
   }
