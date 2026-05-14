@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .select('*')
           .eq('id', session.user.id)
           .single();
-        
+
         if (profile) {
           setUser(profile as User);
         }
@@ -54,14 +54,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 2. Listen for Auth Changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔔 Auth Event:', event, session?.user?.email);
-      
+
       if (session?.user) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single();
-        
+
         if (profile) {
           setUser(profile as User);
         }
@@ -79,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    
+
     if (error) {
       console.error('Login error:', error.message);
       setIsLoading(false);
@@ -92,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (name: string, email: string, phone: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    
+
     // 1. Create Auth User
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -122,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 3. Graceful Synchronization Wait & Force Update
     let retries = 5;
     let finalProfile = null;
-    
+
     while (retries > 0 && !finalProfile) {
       const { data: check } = await supabase.from('profiles').select('*').eq('id', authData.user.id).single();
       if (check) {
