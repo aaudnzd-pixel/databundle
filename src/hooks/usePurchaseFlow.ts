@@ -54,6 +54,7 @@ export function usePurchaseFlow() {
     
     setError(null);
     setIsProcessing(true);
+    const referringAgentId = !user ? localStorage.getItem('referring_agent_id') : null;
 
     // SYSTEM MAINTENANCE CHECKS (Fetching from Supabase for real-time accuracy)
     const { data: settings } = await supabase
@@ -90,7 +91,6 @@ export function usePurchaseFlow() {
       const transactionId = ref || `ref-wallet-${Math.random().toString(36).substr(2, 9)}`;
       const commissionRate = settings?.default_commission_rate ? Number(settings.default_commission_rate) : 0.05;
       const commissionEarned = (selectedPackage.price * commissionRate);
-      const referringAgentId = !user ? localStorage.getItem('referring_agent_id') : null;
 
       // 1. Create Transaction in Supabase
       const { error: txError } = await supabase.from('transactions').insert({
