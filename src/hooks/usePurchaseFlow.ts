@@ -100,8 +100,7 @@ export function usePurchaseFlow() {
         commission_earned: commissionEarned,
         status: 'PAID',
         funding_source: pMethod,
-        supplier_id: transactionId,
-        type: user ? 'DIRECT' : (referringAgentId ? 'LINK' : 'WEB')
+        supplier_id: transactionId
       });
 
       if (txError) {
@@ -177,7 +176,9 @@ export function usePurchaseFlow() {
           packageId: selectedPackage.id,
           packageName: selectedPackage.name,
           recipient: phoneNumber,
-          agentId: user?.id || 'GUEST'
+          agentId: user?.id || 'GUEST',
+          referringAgentId: referringAgentId,
+          type: user ? 'DIRECT' : (referringAgentId ? 'LINK' : 'WEB')
         },
         onSuccess: (response) => {
           processOrder('MOMO', response.reference);
