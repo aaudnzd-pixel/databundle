@@ -11,6 +11,9 @@ export const metadata: Metadata = {
 };
 
 import { AuthProvider } from '@/lib/auth-context';
+import { validateEnv } from '@/lib/validate-env';
+
+validateEnv();
 
 export default function RootLayout({
   children,

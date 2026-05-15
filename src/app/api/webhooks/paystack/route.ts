@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const secret = process.env.PAYSTACK_SECRET_KEY;
     if (!secret) {
       console.error('CRITICAL: PAYSTACK_SECRET_KEY is missing');
-      return NextResponse.json({ error: 'Config error' }, { status: 500 });
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 
     const hash = crypto
@@ -80,12 +80,28 @@ export async function POST(request: Request) {
         return NextResponse.json({ status: 'already_processed' });
       }
 
+      // 2.5 Verify Agent/Referrer exists if provided
+      let finalAgentId = (agentId && agentId !== 'GUEST') ? agentId : (referringAgentId || null);
+      
+      if (finalAgentId) {
+        const { data: agentCheck } = await adminSupabase
+          .from('profiles')
+          .select('id')
+          .eq('id', finalAgentId)
+          .single();
+        
+        if (!agentCheck) {
+          console.warn('⚠️ Webhook: Agent ID not found, reverting to null:', finalAgentId);
+          finalAgentId = null;
+        }
+      }
+
       // 4. Create or Update Transaction
       const commissionRate = 0.05; 
       const commissionEarned = (amount / 100) * commissionRate;
 
       const txData = {
-        agent_id: (agentId && agentId !== 'GUEST') ? agentId : (referringAgentId || null),
+        agent_id: finalAgentId,
         recipient_phone: recipient,
         amount: amount / 100,
         commission_earned: commissionEarned,
