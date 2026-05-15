@@ -9,6 +9,13 @@ const adminSupabase = createClient(supabaseUrl, serviceRoleKey);
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const authHeader = request.headers.get('Authorization');
+    const webhookSecret = process.env.BUNDLECORNER_WEBHOOK_SECRET;
+
+    if (webhookSecret && authHeader !== `Bearer ${webhookSecret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     console.log('🔔 Bundle Corner Webhook Received:', body);
 
     // Expected fields from Bundle Corner: orderId, status

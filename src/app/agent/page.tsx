@@ -209,10 +209,16 @@ function AgentPageContent() {
         }
 
         // 5. Fetch Withdrawals
-        const { data: withdrawalData } = await supabase
+        const withdrawalQuery = supabase
           .from('withdrawals')
           .select('*, profiles(name)')
           .order('created_at', { ascending: false });
+        
+        if (user.role?.toUpperCase() !== 'ADMIN') {
+          withdrawalQuery.eq('agent_id', user.id);
+        }
+
+        const { data: withdrawalData } = await withdrawalQuery;
         
         if (withdrawalData) {
           setDbWithdrawals(withdrawalData);

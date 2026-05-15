@@ -111,7 +111,7 @@ export async function POST(request: Request) {
           
           console.log('🚀 Webhook: Data Delivered Successfully');
         } else {
-          await supabase
+          await adminSupabase
             .from('transactions')
             .update({ status: 'FAILED' })
             .eq('id', transactionId);
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
         }
       } catch (deliveryErr) {
         console.error('❌ Webhook Delivery Exception:', deliveryErr);
-        await supabase
+        await adminSupabase
           .from('transactions')
           .update({ status: 'FAILED' })
           .eq('id', transactionId);

@@ -24,18 +24,13 @@ export default function AffiliateStorePage() {
         const parts = slug.split('-');
         const idSuffix = parts[parts.length - 1];
 
-        // 2. Find the agent profile
-        // Since we only have a suffix, we'll search for profiles where ID ends with this.
-        // In a real app, we'd have a 'slug' column.
-        const { data: profiles, error: profileError } = await supabase
+        const { data: matchingAgent, error: profileError } = await supabase
           .from('profiles')
-          .select('*');
+          .select('id, name, global_markup')
+          .like('id', `%${idSuffix}`)
+          .single();
         
-        if (profileError) throw profileError;
-
-        const matchingAgent = profiles.find(p => p.id.endsWith(idSuffix));
-
-        if (!matchingAgent) {
+        if (profileError || !matchingAgent) {
           setError("Store not found. Please check the link and try again.");
           setIsLoading(false);
           return;
