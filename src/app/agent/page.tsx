@@ -556,10 +556,10 @@ function AgentPageContent() {
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Direct Store Link</span>
                   <div className="flex items-center justify-between mt-1 gap-4">
-                    <code className="text-sm font-bold text-blue-600 truncate">https://databundle.gh/s/{user.name.toLowerCase().replace(/\s+/g, '-')}-{user.id.slice(-4)}</code>
+                    <code className="text-sm font-bold text-blue-600 truncate">https://bundlecorner.netlify.app/s/{user.name.toLowerCase().replace(/\s+/g, '-')}-{user.id.slice(-4)}</code>
                     <button
                       onClick={() => {
-                        const url = `https://databundle.gh/s/${user.name.toLowerCase().replace(/\s+/g, '-')}-${user.id.slice(-4)}`;
+                        const url = `https://bundlecorner.netlify.app/s/${user.name.toLowerCase().replace(/\s+/g, '-')}-${user.id.slice(-4)}`;
                         navigator.clipboard.writeText(url);
                         alert('Link copied to clipboard!');
                       }}
