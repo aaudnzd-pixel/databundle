@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 
 export const AgentStats = ({ stats }: { stats?: any }) => {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
 
   const displayStats = stats || {
     totalSales: 0,
@@ -56,7 +56,7 @@ export const RecentSales = ({
   onAgentClick?: (agentId: string) => void 
 }) => {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
 
   return (
     <div className="bg-white rounded-[2.5rem] border border-slate-300 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] overflow-hidden">

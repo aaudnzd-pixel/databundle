@@ -90,16 +90,18 @@ export function usePurchaseFlow() {
       const transactionId = ref || `ref-wallet-${Math.random().toString(36).substr(2, 9)}`;
       const commissionRate = settings?.default_commission_rate ? Number(settings.default_commission_rate) : 0.05;
       const commissionEarned = (selectedPackage.price * commissionRate);
+      const referringAgentId = !user ? localStorage.getItem('referring_agent_id') : null;
 
       // 1. Create Transaction in Supabase
       const { error: txError } = await supabase.from('transactions').insert({
-        agent_id: user?.id || null,
+        agent_id: user?.id || referringAgentId || null,
         recipient_phone: phoneNumber,
         amount: selectedPackage.price,
         commission_earned: commissionEarned,
         status: 'PAID',
         funding_source: pMethod,
-        supplier_id: transactionId
+        supplier_id: transactionId,
+        type: user ? 'DIRECT' : (referringAgentId ? 'LINK' : 'WEB')
       });
 
       if (txError) {
@@ -152,6 +154,16 @@ export function usePurchaseFlow() {
       } catch (err) {
         console.error('Delivery Error:', err);
         setError('A technical error occurred during delivery. Please contact support.');
+        
+        // Update status to FAILED in the DB if an exception occurs
+        try {
+          await supabase.from('transactions').update({ 
+            status: 'FAILED',
+            metadata: { error: String(err) }
+          }).eq('supplier_id', transactionId);
+        } catch (updateErr) {
+          console.error('Failed to log delivery error to DB:', updateErr);
+        }
       }
 
       // Clear progress after 10 seconds

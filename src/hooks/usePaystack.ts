@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import config from '@/config';
+import { useAuth } from '@/lib/auth-context';
 
 interface PaystackProps {
   email: string;
@@ -13,6 +14,7 @@ interface PaystackProps {
 
 export function usePaystack() {
   const [loaded, setLoaded] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -34,7 +36,7 @@ export function usePaystack() {
 
     const handler = (window as any).PaystackPop.setup({
       key: config.paystack.publicKey,
-      email: 'customer@databundle.com.gh', // Placeholder as Paystack requires email
+      email: user?.email || 'customer@databundle.com.gh', 
       amount: Math.round(amount * 100), // Paystack expects amount in pesewas/kobo
       currency: 'GHS',
       metadata,

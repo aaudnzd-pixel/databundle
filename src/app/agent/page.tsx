@@ -158,7 +158,7 @@ function AgentPageContent() {
         }
 
         // 2. Fetch Agents (Only if Admin)
-        if (user.role === 'ADMIN') {
+        if (user.role?.toUpperCase() === 'ADMIN') {
           const { data: agentsData, error: agentsError } = await supabase
             .from('profiles')
             .select('*')
@@ -199,7 +199,7 @@ function AgentPageContent() {
           .order('created_at', { ascending: false })
           .limit(50); // Increased limit for better visibility
         
-        if (user.role !== 'ADMIN') {
+        if (user.role?.toUpperCase() !== 'ADMIN') {
           txQuery.eq('agent_id', user.id);
         }
 
@@ -442,7 +442,7 @@ function AgentPageContent() {
     { id: 'SETTINGS', label: 'Settings', icon: Settings },
   ];
 
-  if (user.role === 'ADMIN') {
+  if (user.role?.toUpperCase() === 'ADMIN') {
     tabs.splice(1, 0, { id: 'AGENTS', label: 'Manage Agents', icon: Users });
     tabs.push({ id: 'MANAGEMENT', label: 'System Management', icon: ShieldCheck });
   }
