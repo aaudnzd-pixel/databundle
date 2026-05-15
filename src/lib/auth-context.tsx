@@ -106,19 +106,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    // 2. Insert into Profiles table
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: authData.user.id,
-      name,
-      email,
-      phone,
-      role: 'AGENT',
-      balance: 0.00,
-      commissions: 0.00
-    });
-
-    // 3. Graceful Synchronization Wait & Force Update
-    let retries = 5;
+    // 2. Graceful Synchronization Wait for Server-Side Trigger
+    // Profile is now created automatically via public.handle_new_user() trigger in SQL.
+    let retries = 10;
     let finalProfile = null;
 
     while (retries > 0 && !finalProfile) {
@@ -126,7 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (check) {
         finalProfile = check;
       } else {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         retries--;
       }
     }
