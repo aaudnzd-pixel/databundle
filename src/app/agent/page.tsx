@@ -426,9 +426,14 @@ function AgentPageContent() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      // Let the auth-context handle redirection if needed, or just allow the component to unmount
+      router.replace('/');
     }
-  }, [user, isLoading]);
+    
+    // Security check for Admin tabs
+    if (user && user.role?.toUpperCase() !== 'ADMIN' && (activeTab === 'MANAGEMENT' || activeTab === 'AGENTS')) {
+      setActiveTab('OVERVIEW');
+    }
+  }, [user, isLoading, activeTab, router]);
 
   if (isLoading || !user) {
     return (
