@@ -33,13 +33,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // 1. Initial Session Check
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
         // Fetch profile
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', session.user.id)
+          .eq('id', authUser.id)
           .single();
 
         if (profile) {

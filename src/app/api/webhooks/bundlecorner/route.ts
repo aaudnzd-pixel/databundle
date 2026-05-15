@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+
+const BundleCornerSchema = z.object({
+  orderId: z.string(),
+  status: z.string(),
+});
 
 // Admin client for bypassing RLS
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -9,6 +15,14 @@ const adminSupabase = createClient(supabaseUrl, serviceRoleKey);
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const result = BundleCornerSchema.safeParse(body);
+
+    if (!result.success) {
+      console.error('❌ Invalid Bundle Corner Webhook Payload:', result.error.message);
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    }
+
+    const { orderId, status } = result.data;
     const authHeader = request.headers.get('Authorization');
     const webhookSecret = process.env.BUNDLECORNER_WEBHOOK_SECRET;
 
@@ -17,13 +31,6 @@ export async function POST(request: Request) {
     }
 
     console.log('🔔 Bundle Corner Webhook Received:', body);
-
-    // Expected fields from Bundle Corner: orderId, status
-    const { orderId, status } = body;
-
-    if (!orderId || !status) {
-      return NextResponse.json({ error: 'Missing orderId or status' }, { status: 400 });
-    }
 
     // Map supplier status to our internal status
     let internalStatus: 'DELIVERED' | 'FAILED' | 'PROCESSING';

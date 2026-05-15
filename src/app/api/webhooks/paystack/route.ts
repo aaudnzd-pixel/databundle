@@ -2,7 +2,25 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabase } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
 import SupplierService from '@/services/supplier-service';
+
+const PaystackEventSchema = z.object({
+  event: z.string(),
+  data: z.object({
+    reference: z.string(),
+    amount: z.number(),
+    status: z.string(),
+    metadata: z.object({
+      packageId: z.string(),
+      recipient: z.string(),
+      agentId: z.string().optional(),
+      referringAgentId: z.string().nullable().optional(),
+      type: z.string().optional(),
+      packageName: z.string().optional(),
+    }).optional(),
+  }),
+});
 
 // Admin client for bypassing RLS in webhooks
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -35,11 +53,19 @@ export async function POST(request: Request) {
     }
 
     // 2. Parse Event
-    const event = JSON.parse(body);
+    const json = JSON.parse(body);
+    const result = PaystackEventSchema.safeParse(json);
+
+    if (!result.success) {
+      console.error('❌ Invalid Paystack Webhook Payload:', result.error.message);
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    }
+
+    const event = result.data;
     console.log('🔔 Paystack Webhook Received:', event.event);
 
     if (event.event === 'charge.success') {
-      const { reference, metadata, amount, status } = event.data;
+      const { reference, metadata, amount } = event.data;
       const { packageId, recipient, agentId, referringAgentId, type, packageName } = metadata || {};
 
       // 3. Check if transaction already exists and is delivered
