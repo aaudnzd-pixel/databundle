@@ -18,8 +18,13 @@ export const config: Config = {
     defaultRate: 0.05, // Fixed 5% default
   },
   paystack: {
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+    publicKey: (process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '').trim(),
   },
 };
+
+// Log warning if key is missing in development
+if (!config.paystack.publicKey && typeof window !== 'undefined') {
+  console.warn('⚠️ Paystack Public Key is missing! Check your environment variables.');
+}
 
 export default config;

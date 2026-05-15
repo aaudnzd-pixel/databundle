@@ -34,6 +34,12 @@ export function usePaystack() {
       return;
     }
 
+    if (!config.paystack.publicKey || !config.paystack.publicKey.startsWith('pk_')) {
+      console.error('Invalid Paystack Public Key:', config.paystack.publicKey);
+      alert('Payment system configuration error. Please contact support.');
+      return;
+    }
+
     const handler = (window as any).PaystackPop.setup({
       key: config.paystack.publicKey,
       email: user?.email || 'customer@databundle.com.gh', 
