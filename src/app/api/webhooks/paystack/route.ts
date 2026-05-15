@@ -67,6 +67,11 @@ export async function POST(request: Request) {
     if (event.event === 'charge.success') {
       const { reference, metadata, amount } = event.data;
       const { packageId, recipient, agentId, referringAgentId, type, packageName } = metadata || {};
+      
+      if (!packageId || !recipient) {
+        console.error('❌ Webhook Error: Missing packageId or recipient in metadata');
+        return NextResponse.json({ error: 'Missing metadata' }, { status: 400 });
+      }
 
       // 3. Check if transaction already exists and is delivered
       const { data: existingTx } = await adminSupabase
